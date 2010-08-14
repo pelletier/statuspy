@@ -47,6 +47,19 @@ class APIUsersHandler(tornado.web.RequestHandler):
         if not user_name:
             self.write({'statuspy':'Welcome', 'version':API_VERSION})
             return None
+        
+        uid = r.get('username:%s:uid' % user_name)
+        
+        if not uid:
+            raise tornado.web.HTTPError(404)
+        
+        data = {}
+        data['user_name'] = user_name
+        data['uid'] = uid
+        data['email'] = r.get('uid:%s:email' % uid)
+        
+        self.write(data)
+    
     
     def post(self, user_name):
         if user_name:
@@ -59,8 +72,6 @@ class APIUsersHandler(tornado.web.RequestHandler):
             email = self.request.arguments['email'][0]
         except KeyError:
             raise tornado.web.HTTPError(400)
-        
-        print password
         
         # Check if user name does not already exists
         if r.get('username:%s:uid' % user_name):

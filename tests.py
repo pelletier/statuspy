@@ -16,7 +16,7 @@ class APIUsersTest(AsyncHTTPTestCase):
     
     def get_app(self):
         return statuspy.application
-
+    
     def test_api_version(self):
         self.http_client.fetch(self.get_url('/%s/' % API_VERSION), self.stop)
         response = self.wait()
@@ -55,4 +55,19 @@ class APIUsersTest(AsyncHTTPTestCase):
                                body='user_name=guy&password=yeah&email=bbb@example.com')
         response = self.wait()
         self.assertEqual(response.code, 409)
-        
+    
+    def test_get_info_user(self):
+        self.http_client.fetch(self.get_url('/%s/' % API_VERSION),
+                               self.stop, method='POST',\
+                               body='user_name=albert&password=yeah&email=bbb@example.com')
+        response = self.wait()
+
+        self.http_client.fetch(self.get_url('/%s/%s' % (API_VERSION, 'albert')),
+                               self.stop, method='GET')
+        response = self.wait()
+        data = json.loads(response.body)
+        self.assertEquals(response.code, 200)
+        self.assertEquals(data['user_name'], 'albert')
+        self.assertEquals(data['email'], 'bbb@example.com')
+        self.assertTrue(int(data['uid']).__class__ == int)
+
