@@ -1,5 +1,6 @@
 import json
 import hashlib
+import urlparse
 import redis
 import tornado.httpserver
 import tornado.ioloop
@@ -31,21 +32,33 @@ class HomeHandler(tornado.web.RequestHandler):
 # API Handling ---------------------------------------------------------------
 
 # --> Base for uniform output (JSON)
+def user_exists(f):
+    def decorate(self, user_name, *args, **kwargs):
+        uid = r.get('username:%s:uid' % user_name)
+        if not uid:
+            raise tornado.web.HTTPError(404)
+        kwargs['uid'] = uid
+        return f(self, user_name, *args, **kwargs)
+    return decorate
+
 class APIBaseHandler(tornado.web.RequestHandler):
     
-    def write(self, data):
+    def output(self, data):
         mimetype = 'application/json'
         if not data.__class__ == str:
             data = json.dumps(data)
-        self.__super__.write(data)
+        self.write(data)
         self.set_header("Content-Type", mimetype)
 
+
 # --> User managmenent
-class APIUsersHandler(tornado.web.RequestHandler):
+class APIUsersHandler(APIBaseHandler):
     
+    # Give informations on either the API (if no user provided) or the
+    # user himself.
     def get(self, user_name):
         if not user_name:
-            self.write({'statuspy':'Welcome', 'version':API_VERSION})
+            self.output({'statuspy':'Welcome', 'version':API_VERSION})
             return None
         
         uid = r.get('username:%s:uid' % user_name)
@@ -58,9 +71,10 @@ class APIUsersHandler(tornado.web.RequestHandler):
         data['uid'] = uid
         data['email'] = r.get('uid:%s:email' % uid)
         
-        self.write(data)
+        self.output(data)
     
     
+    # Subscribe a new user
     def post(self, user_name):
         if user_name:
             raise tornado.web.HTTPError(405)
@@ -89,13 +103,48 @@ class APIUsersHandler(tornado.web.RequestHandler):
         r.set('uid:%s:password' % uid, hashed_password)
         r.set('uid:%s:email' % uid, email)
         
-        self.write({'uid': uid})
+        self.output({'uid': uid})
 
+
+class APIFollowersHandler(APIBaseHandler):
+    
+    # Returns the list of the persons who follow the given user
+    @user_exists
+    def get(self, user_name, **kwargs):
+        uid = kwargs['uid']
+        followers = r.smembers('uid:%s:followers' % uid)
+        data = []
+        for fol_id in followers:
+            data.append(r.get('uid:%s:username' % fol_id))
+        self.output({'followers': data})
+
+
+class APIFollowingHandler(APIBaseHandler):
+    
+    @user_exists
+    def put(self, user_name, **kwargs):
+        uid = kwargs['uid']
+        try:
+            data = urlparse.parse_qs(self.request.body)
+            follow_name = data['user_name'][0]
+        except KeyError:
+            raise tornado.web.HTTPError(400)
+        
+        follow_uid = r.get('username:%s:uid' % follow_name)
+        
+        if not follow_uid:
+            self.output({'error': 'user to follow does not exist'})
+            raise tornado.web.HTTPError(400)
+        
+        r.sadd('uid:%s:followers' % follow_uid, uid)
+        r.sadd('uid:%s:following' % uid, follow_uid)
 
 # Tornado application
 application = tornado.web.Application([
         (r"/", HomeHandler),
         (r"/%s/([\w\d_-]*)" % API_VERSION, APIUsersHandler),
+        (r"/%s/([\w\d_-]+)/followers" % API_VERSION, APIFollowersHandler),
+        (r"/%s/([\w\d_-]+)/following" % API_VERSION, APIFollowingHandler),
     ],
     autoreload=True)
 
