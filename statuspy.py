@@ -110,23 +110,27 @@ class APIFollowersHandler(APIBaseHandler):
     
     # Returns the list of the persons who follow the given user
     @user_exists
-    def get(self, user_name, **kwargs):
+    def get(self, user_name, follower_name, **kwargs):
+        if follower_name:
+            raise tornado.web.HTTPError(405)
         uid = kwargs['uid']
         followers = r.smembers('uid:%s:followers' % uid)
         data = []
         for fol_id in followers:
             data.append(r.get('uid:%s:username' % fol_id))
         self.output({'followers': data})
-
+    
 
 class APIFollowingHandler(APIBaseHandler):
     
     @user_exists
-    def put(self, user_name, **kwargs):
+    def post(self, user_name, following_name, **kwargs):
+        if following_name:
+            raise tornado.web.HTTPError(405)
+        
         uid = kwargs['uid']
         try:
-            data = urlparse.parse_qs(self.request.body)
-            follow_name = data['user_name'][0]
+            follow_name = self.request.arguments['user_name'][0]
         except KeyError:
             raise tornado.web.HTTPError(400)
         
@@ -138,13 +142,26 @@ class APIFollowingHandler(APIBaseHandler):
         
         r.sadd('uid:%s:followers' % follow_uid, uid)
         r.sadd('uid:%s:following' % uid, follow_uid)
+    
+    @user_exists
+    def delete(self, user_name, following_name, **kwargs):
+        if not following_name:
+            raise tornado.web.HTTPError(405)
+        
+        uid = kwargs['uid']
+        
+        following_id = r.get('username:%s:uid' % following_name)
+        res = r.srem('uid:%s:following' % uid, following_id)
+        
+        self.write({'done': bool(res)})
+    
 
 # Tornado application
 application = tornado.web.Application([
         (r"/", HomeHandler),
         (r"/%s/([\w\d_-]*)" % API_VERSION, APIUsersHandler),
-        (r"/%s/([\w\d_-]+)/followers" % API_VERSION, APIFollowersHandler),
-        (r"/%s/([\w\d_-]+)/following" % API_VERSION, APIFollowingHandler),
+        (r"/%s/([\w\d_-]+)/followers/([\w\d_-]*)" % API_VERSION, APIFollowersHandler),
+        (r"/%s/([\w\d_-]+)/following/([\w\d_-]*)" % API_VERSION, APIFollowingHandler),
     ],
     autoreload=True)
 

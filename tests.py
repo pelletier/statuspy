@@ -22,7 +22,7 @@ class APIUsersTest(AsyncHTTPTestCase):
         response = self.wait()
         self.assertEqual(response.code, 200)
         self.assertEqual(response.body, '{"version": "%s", "statuspy": "Welcome"}' % API_VERSION)
-
+    
     def test_post_with_user_name(self):
         self.http_client.fetch(self.get_url('/%s/foo' % API_VERSION),\
                                self.stop, method="POST", body='')
@@ -70,7 +70,7 @@ class APIUsersTest(AsyncHTTPTestCase):
         self.assertEquals(data['user_name'], 'albert')
         self.assertEquals(data['email'], 'bbb@example.com')
         self.assertTrue(int(data['uid']).__class__ == int)
-
+    
     def test_get_followers(self):
         self.http_client.fetch(self.get_url('/%s/' % API_VERSION),
                                self.stop, method='POST',\
@@ -85,17 +85,22 @@ class APIUsersTest(AsyncHTTPTestCase):
         self.assertEqual(response.code, 200)
 
         # The second user will now follow da first one
-        self.http_client.fetch(self.get_url('/%s/bbb/following' % API_VERSION),
-                               self.stop, method='PUT', body='user_name=aaa')
+        self.http_client.fetch(self.get_url('/%s/bbb/following/' % API_VERSION),
+                           self.stop, method='POST', body='user_name=aaa')
         response = self.wait()
         self.assertEqual(response.code, 200)
         # So bbb now follows aaa.
         
-        self.http_client.fetch(self.get_url('/%s/aaa/followers' % API_VERSION),
+        self.http_client.fetch(self.get_url('/%s/aaa/followers/' % API_VERSION),
                                self.stop, method='GET'),
         response = self.wait()
-        print response.body
         data = json.loads(response.body)
         self.assertEqual(response.code, 200)
         self.assertEqual(data['followers'], ['bbb'])
-
+        
+        self.http_client.fetch(self.get_url('/%s/bbb/following/aaa' % API_VERSION),
+                               self.stop, method='DELETE')
+        response = self.wait()
+        data = json.loads(response.body)
+        self.assertEqual(response.code, 200)
+        self.assertEqual(data["done"], True)
