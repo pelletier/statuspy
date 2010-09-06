@@ -1,4 +1,5 @@
 import json
+from urllib import urlencode
 import redis
 from tornado.testing import *
 import statuspy
@@ -16,6 +17,7 @@ class APIUsersTest(AsyncHTTPTestCase):
     
     def get_app(self):
         return statuspy.application
+
     
     def test_api_version(self):
         self.http_client.fetch(self.get_url('/%s/' % API_VERSION), self.stop)
@@ -86,7 +88,7 @@ class APIUsersTest(AsyncHTTPTestCase):
 
         # The second user will now follow da first one
         self.http_client.fetch(self.get_url('/%s/bbb/following/' % API_VERSION),
-                           self.stop, method='POST', body='user_name=aaa')
+                           self.stop, method='POST', body='user_name=aaa&password=yeah')
         response = self.wait()
         self.assertEqual(response.code, 200)
         # So bbb now follows aaa.
@@ -98,8 +100,10 @@ class APIUsersTest(AsyncHTTPTestCase):
         self.assertEqual(response.code, 200)
         self.assertEqual(data['followers'], ['bbb'])
         
-        self.http_client.fetch(self.get_url('/%s/bbb/following/aaa' % API_VERSION),
-                               self.stop, method='DELETE')
+        # Now we want bbb to stop following aaa
+        body = urlencode({'password': 'yeah'})
+        self.http_client.fetch(self.get_url('/%s/bbb/following/aaa/delete?%s' % (API_VERSION, body)),
+                               self.stop, method='GET')
         response = self.wait()
         data = json.loads(response.body)
         self.assertEqual(response.code, 200)

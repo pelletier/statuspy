@@ -19,8 +19,10 @@ else:
     r = redis.Redis(host=settings.REDIS_HOST, db=settings.REDIS_DB_DEBUG)
 
 # Create an MD5 hash object, better in case of massive subscription / login
-md5 = hashlib.md5()
-
+def hash5(string):
+    md5 = hashlib.md5()
+    md5.update(string)
+    return md5.hexdigest()
 
 # Handle the web UI ----------------------------------------------------------
 class HomeHandler(tornado.web.RequestHandler):
@@ -40,6 +42,41 @@ def user_exists(f):
         kwargs['uid'] = uid
         return f(self, user_name, *args, **kwargs)
     return decorate
+
+def auth_required(f):
+    def decorate(self, user_name, *args, **kwargs):
+        uid = r.get('username:%s:uid' % user_name)
+        if not uid:
+            print 'username %s does not exist in redis' % user_name
+            raise tornado.web.HTTPError(404)
+        kwargs['uid'] = uid
+        
+        print self.request.headers.get("Content-Type", "")
+        print self.request.arguments
+        print self.request.body
+
+        passwd = self.request.arguments.get('password', [''])[0]
+        if not passwd:
+            passwd = urlparse.parse_qs(self.request.body).get('password', '')
+        if not passwd:
+            raise tornado.web.HTTPError(400)
+        
+        print "GIVEN PASSWD (FTW) : %s" % passwd
+        
+        hashed_password = hash5(passwd)
+        print "HASHED PASSWD (FTW) : %s" % hashed_password
+        real_pass = r.get('uid:%s:password' % uid)
+        
+        print "REAL PASSWD (FTW) : %s" % real_pass
+        
+        if not real_pass == hashed_password:
+            raise tornado.web.HTTPError(401)
+        
+        print "f=%s" % f
+        
+        return f(self, user_name, *args, **kwargs)
+    return decorate
+    
 
 class APIBaseHandler(tornado.web.RequestHandler):
     
@@ -73,7 +110,6 @@ class APIUsersHandler(APIBaseHandler):
         
         self.output(data)
     
-    
     # Subscribe a new user
     def post(self, user_name):
         if user_name:
@@ -92,8 +128,8 @@ class APIUsersHandler(APIBaseHandler):
             raise tornado.web.HTTPError(409)
         
         # Hash the password
-        md5.update(password)
-        hashed_password = md5.hexdigest()
+        print "SUB PASSWORD (FU) : %s" % password
+        hashed_password = hash5(password)
         
         # Let's inscrement the global user id to get a new one
         uid = r.incr('global:nextUserId')
@@ -106,11 +142,12 @@ class APIUsersHandler(APIBaseHandler):
         self.output({'uid': uid})
 
 
+# --> Followers management
 class APIFollowersHandler(APIBaseHandler):
     
     # Returns the list of the persons who follow the given user
     @user_exists
-    def get(self, user_name, follower_name, **kwargs):
+    def get(self, user_name, follower_name, action, **kwargs):
         if follower_name:
             raise tornado.web.HTTPError(405)
         uid = kwargs['uid']
@@ -121,11 +158,13 @@ class APIFollowersHandler(APIBaseHandler):
         self.output({'followers': data})
     
 
+# --> Following management
 class APIFollowingHandler(APIBaseHandler):
     
-    @user_exists
-    def post(self, user_name, following_name, **kwargs):
-        if following_name:
+    # Start following someone
+    @auth_required
+    def post(self, user_name, following_name, action, **kwargs):
+        if action or following_name:
             raise tornado.web.HTTPError(405)
         
         uid = kwargs['uid']
@@ -143,8 +182,13 @@ class APIFollowingHandler(APIBaseHandler):
         r.sadd('uid:%s:followers' % follow_uid, uid)
         r.sadd('uid:%s:following' % uid, follow_uid)
     
-    @user_exists
-    def delete(self, user_name, following_name, **kwargs):
+    def get(self, user_name, following_name, action, **kwargs):
+        if action == 'delete':
+            return self.stop_following(user_name, following_name, action, **kwargs)
+    
+    # Stop following someone
+    @auth_required
+    def stop_following(self, user_name, following_name, *args, **kwargs):
         if not following_name:
             raise tornado.web.HTTPError(405)
         
@@ -160,8 +204,8 @@ class APIFollowingHandler(APIBaseHandler):
 application = tornado.web.Application([
         (r"/", HomeHandler),
         (r"/%s/([\w\d_-]*)" % API_VERSION, APIUsersHandler),
-        (r"/%s/([\w\d_-]+)/followers/([\w\d_-]*)" % API_VERSION, APIFollowersHandler),
-        (r"/%s/([\w\d_-]+)/following/([\w\d_-]*)" % API_VERSION, APIFollowingHandler),
+        (r"/%s/([\w\d_-]+)/followers/([\w\d_-]*)/?([\w]*)" % API_VERSION, APIFollowersHandler),
+        (r"/%s/([\w\d_-]+)/following/([\w\d_-]*)/?([\w]*)" % API_VERSION, APIFollowingHandler),
     ],
     autoreload=True)
 

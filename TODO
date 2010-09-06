@@ -1,8 +1,7 @@
 TODO:
-
+    
+    * Write the handler for /following/ - GET
 
 
 FIXME:
     
-    * Update tests to match the new URIs
-
