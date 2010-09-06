@@ -27,6 +27,9 @@ must be provided in the `password` request argument.
     Returns a JSON-encoded list of user names, in a hash with containing
     a single key: followers.
 
+/user_name/following/ - GET
+    Returns a JSON-encoded list of users who user_name follows.
+
 /user_name/following/ - POST *
     Start to follow a user.
     You must provide the following payload:
@@ -37,6 +40,3 @@ must be provided in the `password` request argument.
 
 
 ## To be implemented
-
-/user_name/following/ - GET
-    Returns a JSON-encoded list of users who user_name follows.
