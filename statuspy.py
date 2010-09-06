@@ -161,6 +161,28 @@ class APIFollowersHandler(APIBaseHandler):
 # --> Following management
 class APIFollowingHandler(APIBaseHandler):
     
+    # Dispatch the GET requests
+    def get(self, user_name, following_name, action, **kwargs):
+        if action == 'delete':
+            return self.stop_following(user_name, following_name, action, **kwargs)
+        if not action:
+            return self.followed_list(user_name, following_name, action, **kwargs)
+    
+    # Display the list of the followed persons
+    @user_exists
+    def followed_list(self, user_name, following_name, action, *args, **kwargs):
+        if action or following_name:
+            raise tornado.web.HTTPError(405)
+        
+        uid = kwargs['uid']
+        
+        following = r.smembers('uid:%s:following' % uid)
+        data = []
+        for fol_id in following:
+            data.append(r.get('uid:%s:username' % fol_id))
+        
+        self.write({'following': data})
+    
     # Start following someone
     @auth_required
     def post(self, user_name, following_name, action, **kwargs):
@@ -181,10 +203,6 @@ class APIFollowingHandler(APIBaseHandler):
         
         r.sadd('uid:%s:followers' % follow_uid, uid)
         r.sadd('uid:%s:following' % uid, follow_uid)
-    
-    def get(self, user_name, following_name, action, **kwargs):
-        if action == 'delete':
-            return self.stop_following(user_name, following_name, action, **kwargs)
     
     # Stop following someone
     @auth_required

@@ -100,6 +100,13 @@ class APIUsersTest(AsyncHTTPTestCase):
         self.assertEqual(response.code, 200)
         self.assertEqual(data['followers'], ['bbb'])
         
+        self.http_client.fetch(self.get_url('/%s/bbb/following/' % API_VERSION),
+                               self.stop, method='GET'),
+        response = self.wait()
+        data = json.loads(response.body)
+        self.assertEqual(response.code, 200)
+        self.assertEqual(data['following'], ['aaa'])
+        
         # Now we want bbb to stop following aaa
         body = urlencode({'password': 'yeah'})
         self.http_client.fetch(self.get_url('/%s/bbb/following/aaa/delete?%s' % (API_VERSION, body)),
