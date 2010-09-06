@@ -47,33 +47,21 @@ def auth_required(f):
     def decorate(self, user_name, *args, **kwargs):
         uid = r.get('username:%s:uid' % user_name)
         if not uid:
-            print 'username %s does not exist in redis' % user_name
             raise tornado.web.HTTPError(404)
         kwargs['uid'] = uid
         
-        print self.request.headers.get("Content-Type", "")
-        print self.request.arguments
-        print self.request.body
-
         passwd = self.request.arguments.get('password', [''])[0]
         if not passwd:
             passwd = urlparse.parse_qs(self.request.body).get('password', '')
         if not passwd:
             raise tornado.web.HTTPError(400)
-        
-        print "GIVEN PASSWD (FTW) : %s" % passwd
-        
+                
         hashed_password = hash5(passwd)
-        print "HASHED PASSWD (FTW) : %s" % hashed_password
         real_pass = r.get('uid:%s:password' % uid)
-        
-        print "REAL PASSWD (FTW) : %s" % real_pass
         
         if not real_pass == hashed_password:
             raise tornado.web.HTTPError(401)
-        
-        print "f=%s" % f
-        
+                
         return f(self, user_name, *args, **kwargs)
     return decorate
     
@@ -128,7 +116,6 @@ class APIUsersHandler(APIBaseHandler):
             raise tornado.web.HTTPError(409)
         
         # Hash the password
-        print "SUB PASSWORD (FU) : %s" % password
         hashed_password = hash5(password)
         
         # Let's inscrement the global user id to get a new one
