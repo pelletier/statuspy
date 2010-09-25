@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="content">
+    <h2>Sign in</h2>
+
+    <div id="error">{{error}}</div>
+
+    <form method='POST' action='.'>
+        <label for="username">Username</label>
+        <input type="text" name="username" value="" id="username">
+
+        <label for="password">Password</label>
+        <input type="password" name="password" value="" id="password">
+
+        <img id='loading'
+            style='display:none; float:right; margin-top: 30px;'
+            src="{{ static_url("images/ajax-loader.gif") }}"
+            alt="Loading...">
+
+        <input type="submit" class="submit" name="submit" id="submit" value="Sign in!">
+
+
+    </form>
+
+    <p>
+        Don't have an account yet? Feel free to <a href="/signup/">sign up</a>!
+    </p>
+</div>
+
+
+<script type="text/javascript">
+    $(document).ready(function(){
+        $('form').submit(function(event){
+            $('#loading').show();
+        });
+    });
+</script>
+
+{% end %}

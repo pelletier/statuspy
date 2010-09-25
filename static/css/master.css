@@ -63,16 +63,12 @@ label {
 }
 
 .submit {
-    margin-left: auto;
-    margin-right: auto;
     width: auto;
     margin-top: 20px;
 }
 
-form#signup {
+form{
     width: 300px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 .topelem {

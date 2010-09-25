@@ -34,10 +34,10 @@ def hash5(string):
 class BaseHandler(tornado.web.RequestHandler):
 
     def get_current_user(self):
-        return self.get_secure_cookie('user')
+        return self.get_secure_cookie('uid')
 
 # Handle the web UI ----------------------------------------------------------
-class HomeHandler(tornado.web.RequestHandler):
+class HomeHandler(BaseHandler):
     """
     Handle the web UI
     """
@@ -45,17 +45,49 @@ class HomeHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("home.html")
 
-class AboutHandler(tornado.web.RequestHandler):
+class AboutHandler(BaseHandler):
     """Handle the about page"""
 
     def get(self):
         self.render("about.html")
 
 
-class SignupHandler(tornado.web.RequestHandler):
+class SignupHandler(BaseHandler):
     """Handler the user registration"""
     def get(self):
         self.render("signup.html")
+
+class SigninHandler(BaseHandler):
+    """Handle the user sign in"""
+    
+    def get(self):
+        self.render("signin.html", error='')
+
+    def post(self):
+        
+        error = ""
+
+        try:
+            username = self.request.arguments.get('username', [''])[0]
+            password = self.request.arguments.get('password', [''])[0]
+        except KeyError:
+            error = "Please provide both username and password."
+        
+        if username and password:
+            uid = R.get('username:%s:uid' % username)
+            if not uid:
+                error = "Invalid username or password."
+            else:
+                hashed_password = hash5(password)
+                real_pass = R.get('uid:%s:password' % uid)
+
+                if not real_pass == hashed_password:
+                    error = "Invalid username or password."
+                else:
+                    self.set_secure_cookie('uid', uid)
+                    self.redirect('/')
+        if error:
+            self.render("signin.html", error=error)
 
 
 # API Handling ---------------------------------------------------------------
@@ -85,29 +117,38 @@ def auth_required(func):
     def decorate(self, user_name, *args, **kwargs):
         """Decorate"""
         
-        uid = R.get('username:%s:uid' % user_name)
-        if not uid:
-            raise tornado.web.HTTPError(404)
-        kwargs['uid'] = uid
+        # If the user is not authenticated with a cookie, try the standard auth
+        if not self.current_user:
+
+            uid = R.get('username:%s:uid' % user_name)
+            if not uid:
+                raise tornado.web.HTTPError(404)
+            kwargs['uid'] = uid
+            
+            passwd = self.request.arguments.get('password', [''])[0]
+            if not passwd:
+                passwd = urlparse.parse_qs(self.request.body)\
+                                                       .get('password', '')
+            if not passwd:
+                raise tornado.web.HTTPError(400)
+                    
+            hashed_password = hash5(passwd)
+            real_pass = R.get('uid:%s:password' % uid)
+            
+            if not real_pass == hashed_password:
+                raise tornado.web.HTTPError(401)
         
-        passwd = self.request.arguments.get('password', [''])[0]
-        if not passwd:
-            passwd = urlparse.parse_qs(self.request.body).get('password', '')
-        if not passwd:
-            raise tornado.web.HTTPError(400)
-                
-        hashed_password = hash5(passwd)
-        real_pass = R.get('uid:%s:password' % uid)
-        
-        if not real_pass == hashed_password:
-            raise tornado.web.HTTPError(401)
-                
+        # The user has already been authenticated in the web interface (cookie)
+        else:
+            # We should add its uid to kwargs.
+            kwargs['uid'] = self.get_current_user()
+
         return func(self, user_name, *args, **kwargs)
     
     return decorate
     
 
-class APIBaseHandler(tornado.web.RequestHandler):
+class APIBaseHandler(BaseHandler):
     """
     Base of all API handlers
     """
@@ -299,6 +340,7 @@ APPLICATION = tornado.web.Application([
         (r"/", HomeHandler),
         (r"/about/", AboutHandler),
         (r"/signup/", SignupHandler),
+        (r"/signin/", SigninHandler),
 
         (r"/%s/([\w\d_-]*)" % API_VERSION, APIUsersHandler),
         (r"/%s/([\w\d_-]+)/status/([\d]*)"\
