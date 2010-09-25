@@ -1,0 +1,35 @@
+<html>
+    <head>
+        <title>Statuspy</title>
+        
+        <link rel="stylesheet" 
+            href="{{ static_url("css/master.css") }}"
+            type="text/css"
+            media="screen">
+
+        <script type="text/javascript"
+            src="{{ static_url("js/jquery-1.4.2.min.js") }}">
+        </script>
+
+    </head>
+    <body>
+        <div class="topelem">
+            <a href="/" class="statuspy">Statuspy</a>
+            <a href="/" class="signin">Sign in</a>
+        </div>
+
+        {% block content %}
+        {% end %}
+
+
+        <noscript>
+            <div id="nojs">
+
+                You do not have javascript enabled.
+                Statuspy is a javascript-only website, so please enable it.
+
+            </div>
+        </noscript>
+    </body>
+</html>
+

@@ -16,8 +16,8 @@ r.flushdb()
 class APIUsersTest(AsyncHTTPTestCase):
     
     def get_app(self):
-        return statuspy.application
-
+        return statuspy.APPLICATION
+    
     
     def test_api_version(self):
         self.http_client.fetch(self.get_url('/%s/' % API_VERSION), self.stop)

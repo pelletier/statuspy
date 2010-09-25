@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="content">
+<h2>Sign up</h2>
+
+<form id="signup">
+
+    <label for="username">Username</label>
+    <input type="text" name="username" value="" id="username">
+
+    <label for="email">Email</label>
+    <input type="text" name="email" value="" id="email">
+
+    <label for="password">Password</label><input type="password" name="password" value="" id="password">
+
+    <label for="password2">Verify password</label><input type="password" name="password2" value="" id="password2">
+
+    <input type="submit" value="Sign up" id="submit" class="submit">
+</form>
+
+
+<div id="error"></div>
+</div>
+
+
+<script type="text/javascript">
+    $(document).ready(function(){
+        $('#signup').submit(function(event){
+            var username = $('#username').val();
+            var email = $('#email').val();
+            var password = $('#password').val();
+            var password2 = $('#password2').val();
+
+            $('input').removeClass('error');
+
+            if (password != password2) {
+                $('#error').html("Passwords do not match.");
+                $('#password').addClass('error');
+                $('#password2').addClass('error');
+                return false;
+            }
+
+            var data = {
+                user_name: username,
+                password: password,
+                email: email
+            };
+            
+            $.ajax({
+                type: 'POST',
+                url: '/1.0/',
+                data: data,
+                dataType: 'json',
+                success: function(data) {
+                    console.log('SUCCESS: '+data);
+                    return false;
+                },
+                error: function(xhr, text, error) {
+                console.log('FAIL: '+xhr.status);
+                    switch(xhr.status){
+                        case 400:
+                            $('#error').html('Please fill all the fields.');
+                            break;
+                        case 409:
+                            $('#username').addClass('error');
+                            $('#error').html('Username already taken.');
+                            break;
+                    };
+                    return false;
+                }
+            });
+            
+            event.preventDefault();
+            return false;
+        });
+    });
+</script>
+
+
+{% end %}

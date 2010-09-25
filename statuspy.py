@@ -31,6 +31,11 @@ def hash5(string):
     md5.update(string)
     return md5.hexdigest()
 
+class BaseHandler(tornado.web.RequestHandler):
+
+    def get_current_user(self):
+        return self.get_secure_cookie('user')
+
 # Handle the web UI ----------------------------------------------------------
 class HomeHandler(tornado.web.RequestHandler):
     """
@@ -38,7 +43,19 @@ class HomeHandler(tornado.web.RequestHandler):
     """
 
     def get(self):
-        self.write("Hello world")
+        self.render("home.html")
+
+class AboutHandler(tornado.web.RequestHandler):
+    """Handle the about page"""
+
+    def get(self):
+        self.render("about.html")
+
+
+class SignupHandler(tornado.web.RequestHandler):
+    """Handler the user registration"""
+    def get(self):
+        self.render("signup.html")
 
 
 # API Handling ---------------------------------------------------------------
@@ -266,18 +283,36 @@ class APIFollowingHandler(APIBaseHandler):
         res = R.srem('uid:%s:following' % uid, following_id)
         
         self.write({'done': bool(res)})
+
+
+class APIStatusHandler(APIBaseHandler):
+    """
+    Status management
+    """
+    
+    def get(self, user_name, status_id):
+        pass
     
 
 # Tornado application
 APPLICATION = tornado.web.Application([
         (r"/", HomeHandler),
+        (r"/about/", AboutHandler),
+        (r"/signup/", SignupHandler),
+
         (r"/%s/([\w\d_-]*)" % API_VERSION, APIUsersHandler),
+        (r"/%s/([\w\d_-]+)/status/([\d]*)"\
+                % API_VERSION, APIStatusHandler),
         (r"/%s/([\w\d_-]+)/followers/([\w\d_-]*)/?([\w]*)"\
                 % API_VERSION, APIFollowersHandler),
         (r"/%s/([\w\d_-]+)/following/([\w\d_-]*)/?([\w]*)"\
                 % API_VERSION, APIFollowingHandler),
     ],
-    autoreload=True)
+    autoreload = True,
+    template_path = settings.TEMPLATES_PATH,
+    static_path = settings.STATIC_PATH,
+    cookie_secret = settings.COOKIE_SECRET,
+)
 
 
 def run():
