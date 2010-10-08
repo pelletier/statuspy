@@ -43,7 +43,10 @@ class HomeHandler(BaseHandler):
     """
 
     def get(self):
-        self.render("home.html")
+        if self.current_user:
+            self.render('timeline.html')
+        else:
+            self.render("home.html")
 
 class AboutHandler(BaseHandler):
     """Handle the about page"""

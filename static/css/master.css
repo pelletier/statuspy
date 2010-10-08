@@ -8,7 +8,8 @@ body {
 }
 
 .content {
-    width: 800px;
+    width: 100%;
+    max-width: 800px;
     margin-left: auto;
     margin-right: auto;
     color: rgb(242, 242, 242);
@@ -74,7 +75,8 @@ form{
 .topelem {
     margin: 0px;
     padding: 0px;
-    width: 800px;
+    width: 100%;
+    max-width: 800px;
     margin-left: auto;
     margin-right: auto;
     padding-bottom: 20px;
@@ -115,13 +117,13 @@ form{
     text-shadow: 0px 1px rgba(255,255,255,0.8);
 }
 
-.topelem .signin {
+.topelem .bar {
     float: right;
     color: #AAA;
     background: #333;
 }
 
-.topelem .signin:hover{
+.topelem .bar:hover{
     background: #444;
     color: rgb(242,242,242);
 }

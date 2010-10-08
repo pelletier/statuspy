@@ -15,7 +15,11 @@
     <body>
         <div class="topelem">
             <a href="/" class="statuspy">Statuspy</a>
-            <a href="/signin/" class="signin">Sign in</a>
+            {% if current_user %}
+                <a href="/signout/" class="bar">Sign out</a>
+            {% else %}
+                <a href="/signin/" class="bar">Sign in</a>
+            {% end %}
         </div>
 
         {% block content %}
